@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tests Dietoterapia IJ II</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/quiz.css">
+</head>
+<body class="m1">
+<nav class="topnav" aria-label="Módulos"><div class="wrap">
+<a class="brand" href="index.html" aria-current="page">Dieto IJ II · Tests</a>
+<a href="test1.html">Test 1 · Integrador</a>
+<a href="test2.html">Test 2 · Unidad 2</a>
+<a href="test3.html">Test 3 · EII–SIC</a>
+</div></nav>
+<header class="hero"><div class="wrap">
+<div class="kicker">Dietoterapia Infantojuvenil II · NUT-421 · 4.º año</div>
+<h1>Tests de preparación para el certamen</h1>
+<p>Tres módulos independientes construidos a partir de las Unidades 1, 2 y 3. Cada pregunta entrega la pauta, la retroalimentación fundamentada, el análisis de distractores y el contenido evaluado.</p>
+<div class="chips"><span>120 preguntas en total</span><span>5 casos clínicos</span><span>Retroalimentación inmediata</span></div>
+</div></header>
+<div class="wrap">
+<section class="cards" aria-label="Módulos">
+<a class="card" href="test1.html" style="--c:#0f7a63">
+<span class="mk">Módulo 1 · 50 preguntas</span>
+<h2>Certamen integrador</h2>
+<p>Todas las unidades: evaluación, requerimientos, soporte, renal, respiratorio, FQ, trasplante, prematuro, cardiopatías, crítico, hígado, páncreas, alergias, EII y SIC.</p>
+<ul><li>45 de selección múltiple</li><li>3 casos clínicos cortos</li><li>2 casos clínicos largos con cálculos</li></ul>
+<span class="prog" data-k="t1" data-n="45+3+3+3+6+7"></span>
+<span class="go">Abrir Test 1 →</span>
+</a>
+<a class="card" href="test2.html" style="--c:#1f5fa8">
+<span class="mk">Módulo 2 · 50 preguntas</span>
+<h2>Comprensión Unidad 2</h2>
+<p>Patologías hepáticas y pancreáticas, enfermedad renal, APLV, enfermedad celíaca y síndrome de intestino corto, relacionando fisiopatología con tratamiento.</p>
+<ul><li>Dificultad progresiva por tema</li><li>Básica · Intermedia · Aplicación clínica</li></ul>
+<span class="prog" data-k="t2" data-n="50"></span>
+<span class="go">Abrir Test 2 →</span>
+</a>
+<a class="card" href="test3.html" style="--c:#a2441b">
+<span class="mk">Módulo 3 · 20 preguntas</span>
+<h2>EII y SIC</h2>
+<p>Crohn vs colitis ulcerosa, malabsorción, alteraciones hidroelectrolíticas, resecciones, adaptación intestinal y soporte nutricional.</p>
+<ul><li>Dificultad media</li><li>Situaciones clínicas breves</li></ul>
+<span class="prog" data-k="t3" data-n="20"></span>
+<span class="go">Abrir Test 3 →</span>
+</a>
+</section>
+<section class="howto">
+<h2>Cómo usar los tests</h2>
+<ol>
+<li>Elige un módulo y responde: al marcar una alternativa se muestra la pauta, la retroalimentación, el análisis de distractores y el contenido evaluado.</li>
+<li>Si no sabes, usa “Ver respuesta sin contestar”: queda marcada como revisada y no suma puntaje.</li>
+<li>Filtra por pendientes, incorrectas o casos clínicos, y revisa la pauta completa al final de cada módulo.</li>
+<li>Tus respuestas se guardan en este navegador; “Reiniciar test” las borra.</li>
+</ol>
+</section>
+<footer>Elaborado a partir del material de las Unidades 1, 2 y 3 de Dietoterapia Infantojuvenil II (UCM 2026).</footer>
+</div>
+<script>
+document.querySelectorAll(".prog").forEach(function (s) {
+  var k = s.getAttribute("data-k"), tot = s.getAttribute("data-n").split("+").reduce(function (a, b) { return a + Number(b); }, 0);
+  var n = 0;
+  try { var st = JSON.parse(localStorage.getItem("dieto-ij2-" + k) || "{}"); n = Object.keys(st).length; } catch (e) {}
+  s.textContent = n ? "Avance guardado: " + n + " de " + tot + " ítems" : "Sin iniciar";
+});
+</script>
+</body>
+</html>
