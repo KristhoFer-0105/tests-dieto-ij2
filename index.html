@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Tests Dietoterapia IJ II</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="assets/quiz.css?v=2">
+<link rel="stylesheet" href="assets/quiz.css?v=3">
 </head>
 <body class="m1">
 <nav class="topnav" aria-label="Módulos"><div class="wrap">
@@ -17,8 +17,8 @@
 <header class="hero"><div class="wrap">
 <div class="kicker">Dietoterapia Infantojuvenil II · NUT-421 · 4.º año</div>
 <h1>Tests de preparación para el certamen</h1>
-<p>Tres módulos independientes construidos a partir de las Unidades 1, 2 y 3. Funcionan como certamen: una pregunta a la vez, en formatos mixtos, y al entregar se muestra el puntaje, la nota, la tabla de respuestas, la corrección fundamentada y los contenidos a reforzar.</p>
-<div class="chips"><span>117 preguntas en total</span><span>8 casos clínicos</span><span>5 esquemas anatómicos</span><span>Corrección al entregar</span></div>
+<p>Tres módulos independientes construidos a partir de las Unidades 1, 2 y 3. Todas las preguntas están a la vista. Al responder ves de inmediato la respuesta correcta, por qué lo es, por qué las otras opciones no lo son y el contenido evaluado; puedes reintentar cada pregunta.</p>
+<div class="chips"><span>117 preguntas en total</span><span>8 casos clínicos</span><span>5 esquemas anatómicos</span><span>Corrección inmediata</span></div>
 </div></header>
 <div class="wrap">
 <section class="cards" aria-label="Módulos">
@@ -50,10 +50,10 @@
 <section class="howto">
 <h2>Cómo usar los tests</h2>
 <ol>
-<li>Elige un módulo y responde una pregunta a la vez; puedes volver atrás o saltar con el mapa de preguntas.</li>
-<li>No verás respuestas ni pistas hasta presionar “Entregar certamen”.</li>
-<li>Al entregar obtienes puntaje, porcentaje de logro, nota (escala 1,0–7,0, exigencia 60 %), tabla de correctas e incorrectas, fundamentación de cada respuesta y contenidos a reforzar.</li>
-<li>Tus respuestas se guardan en este navegador; “Reiniciar” comienza un nuevo intento.</li>
+<li>Elige un módulo: todas las preguntas aparecen en la página; usa el mapa para saltar a cualquiera.</li>
+<li>En alternativas, la corrección aparece al marcar; en V/F, asociación, ordenar, completar y numéricas, presiona “Comprobar respuesta”.</li>
+<li>Cada corrección muestra la respuesta correcta, su fundamento y por qué las otras opciones son incorrectas; con “Reintentar pregunta” vuelves a responderla. Al final, el resumen entrega puntaje, nota (1,0–7,0, exigencia 60 %), tabla de respuestas y contenidos a reforzar.</li>
+<li>Tus respuestas se guardan en este navegador; “Reiniciar test” las borra todas.</li>
 </ol>
 </section>
 <footer>Elaborado a partir del material de las Unidades 1, 2 y 3 de Dietoterapia Infantojuvenil II (UCM 2026).</footer>
@@ -63,8 +63,8 @@ document.querySelectorAll(".prog").forEach(function (s) {
   var k = s.getAttribute("data-k"), tot = s.getAttribute("data-n").split("+").reduce(function (a, b) { return a + Number(b); }, 0);
   var n = 0;
   var sub = false;
-  try { var st = JSON.parse(localStorage.getItem("dieto-ij2-v2-" + k) || "{}"); n = Object.keys(st.ans || {}).length; sub = !!st.sub; } catch (e) {}
-  s.textContent = sub ? "Certamen entregado: revisa tu corrección" : n ? "En curso: " + n + " de " + tot + " ítems respondidos" : "Sin iniciar";
+  try { var st = JSON.parse(localStorage.getItem("dieto-ij2-v3-" + k) || "{}"); n = Object.keys(st.chk || {}).length; sub = n >= tot; } catch (e) {}
+  s.textContent = sub ? "Test completo: revisa tu resumen" : n ? "En curso: " + n + " de " + tot + " ítems respondidos" : "Sin iniciar";
 });
 </script>
 </body>
