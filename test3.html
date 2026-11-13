@@ -16,23 +16,20 @@
 </div></nav>
 <header class="hero" id="hero"></header>
 <div class="bar"><div class="wrap">
-<div class="stats"><span><b id="sDone">0</b> respondidas</span><span><b id="sOk">0</b> correctas</span><span><b id="sPct">—</b> logro</span><span><b id="sNota">—</b> nota estimada (60 %)</span></div>
+<div class="stats" id="stats"></div>
 <div class="track"><i id="track"></i></div>
 <div class="tools">
-<button type="button" class="f" data-f="all" aria-pressed="true">Todas</button>
-<button type="button" class="f" data-f="pend" aria-pressed="false">Pendientes</button>
-<button type="button" class="f" data-f="bad" aria-pressed="false">Incorrectas</button>
-<button type="button" class="f" data-f="case" aria-pressed="false">Casos clínicos</button>
-<button type="button" class="f" id="printBtn">Imprimir</button>
-<button type="button" class="f reset" id="reset">Reiniciar test</button>
+<button type="button" class="f" id="submitBtn">Entregar certamen</button>
+<button type="button" class="f reset" id="reset">Reiniciar</button>
 </div></div></div>
 <div class="wrap">
 <details class="map"><summary>Mapa de preguntas</summary><div class="grid" id="grid"></div>
-<div class="legend"><span><i style="background:var(--ok)"></i>Correcta</span><span><i style="background:var(--bad)"></i>Con errores</span><span><i style="background:var(--sol)"></i>Revisada sin contestar</span><span><i style="background:var(--warn)"></i>Caso en curso</span></div></details>
+<div class="legend"><span><i style="background:var(--accent)"></i>Respondida</span><span><i style="background:var(--warn)"></i>Incompleta / parcial</span><span><i style="background:var(--ok)"></i>Correcta (tras entregar)</span><span><i style="background:var(--bad)"></i>Incorrecta (tras entregar)</span></div></details>
 <main id="main"></main>
-<footer>Elaborado a partir del material de las Unidades 1, 2 y 3 de Dietoterapia Infantojuvenil II (NUT-421, UCM 2026). Tus respuestas se guardan solo en este navegador.</footer>
+<footer>Elaborado a partir del material de las Unidades 1, 2 y 3 de Dietoterapia Infantojuvenil II (NUT-421, UCM 2026). Modo certamen: la corrección se muestra al entregar. Tus respuestas se guardan solo en este navegador.</footer>
 </div>
 <script src="data/t3.js"></script>
+<script src="assets/anatomia.js"></script>
 <script src="assets/quiz.js"></script>
 </body>
 </html>

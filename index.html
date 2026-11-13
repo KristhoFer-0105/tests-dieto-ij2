@@ -17,43 +17,43 @@
 <header class="hero"><div class="wrap">
 <div class="kicker">Dietoterapia Infantojuvenil II · NUT-421 · 4.º año</div>
 <h1>Tests de preparación para el certamen</h1>
-<p>Tres módulos independientes construidos a partir de las Unidades 1, 2 y 3. Cada pregunta entrega la pauta, la retroalimentación fundamentada, el análisis de distractores y el contenido evaluado.</p>
-<div class="chips"><span>120 preguntas en total</span><span>5 casos clínicos</span><span>Retroalimentación inmediata</span></div>
+<p>Tres módulos independientes construidos a partir de las Unidades 1, 2 y 3. Funcionan como certamen: una pregunta a la vez, en formatos mixtos, y al entregar se muestra el puntaje, la nota, la tabla de respuestas, la corrección fundamentada y los contenidos a reforzar.</p>
+<div class="chips"><span>117 preguntas en total</span><span>8 casos clínicos</span><span>5 esquemas anatómicos</span><span>Corrección al entregar</span></div>
 </div></header>
 <div class="wrap">
 <section class="cards" aria-label="Módulos">
 <a class="card" href="test1.html" style="--c:#0f7a63">
-<span class="mk">Módulo 1 · 50 preguntas</span>
+<span class="mk">Módulo 1 · 43 preguntas</span>
 <h2>Certamen integrador</h2>
 <p>Todas las unidades: evaluación, requerimientos, soporte, renal, respiratorio, FQ, trasplante, prematuro, cardiopatías, crítico, hígado, páncreas, alergias, EII y SIC.</p>
-<ul><li>45 de selección múltiple</li><li>3 casos clínicos cortos</li><li>2 casos clínicos largos con cálculos</li></ul>
-<span class="prog" data-k="t1" data-n="45+3+3+3+6+7"></span>
+<ul><li>38 preguntas: alternativas, V/F, asociación, ordenar, completar y numéricas</li><li>3 casos clínicos cortos</li><li>2 casos clínicos largos con cálculos</li></ul>
+<span class="prog" data-k="t1v2" data-n="60"></span>
 <span class="go">Abrir Test 1 →</span>
 </a>
 <a class="card" href="test2.html" style="--c:#1f5fa8">
-<span class="mk">Módulo 2 · 50 preguntas</span>
+<span class="mk">Módulo 2 · 36 preguntas</span>
 <h2>Comprensión Unidad 2</h2>
 <p>Patologías hepáticas y pancreáticas, enfermedad renal, APLV, enfermedad celíaca y síndrome de intestino corto, relacionando fisiopatología con tratamiento.</p>
-<ul><li>Dificultad progresiva por tema</li><li>Básica · Intermedia · Aplicación clínica</li></ul>
-<span class="prog" data-k="t2" data-n="50"></span>
+<ul><li>Formatos mixtos con dificultad progresiva por tema</li><li>Básica · Intermedia · Aplicación clínica</li></ul>
+<span class="prog" data-k="t2v2" data-n="36"></span>
 <span class="go">Abrir Test 2 →</span>
 </a>
 <a class="card" href="test3.html" style="--c:#a2441b">
-<span class="mk">Módulo 3 · 20 preguntas</span>
+<span class="mk">Módulo 3 · 38 preguntas</span>
 <h2>EII y SIC</h2>
-<p>Crohn vs colitis ulcerosa, malabsorción, alteraciones hidroelectrolíticas, resecciones, adaptación intestinal y soporte nutricional.</p>
-<ul><li>Dificultad media</li><li>Situaciones clínicas breves</li></ul>
-<span class="prog" data-k="t3" data-n="20"></span>
+<p>Certamen exigente de EII y SIC: Crohn vs colitis ulcerosa, micronutrientes, resecciones, adaptación intestinal, alteraciones hidroelectrolíticas y soporte nutricional según anatomía remanente.</p>
+<ul><li>30 preguntas de formatos mixtos</li><li>5 esquemas de resecciones y anastomosis</li><li>3 casos clínicos de complejidad progresiva</li></ul>
+<span class="prog" data-k="t3v2" data-n="60"></span>
 <span class="go">Abrir Test 3 →</span>
 </a>
 </section>
 <section class="howto">
 <h2>Cómo usar los tests</h2>
 <ol>
-<li>Elige un módulo y responde: al marcar una alternativa se muestra la pauta, la retroalimentación, el análisis de distractores y el contenido evaluado.</li>
-<li>Si no sabes, usa “Ver respuesta sin contestar”: queda marcada como revisada y no suma puntaje.</li>
-<li>Filtra por pendientes, incorrectas o casos clínicos, y revisa la pauta completa al final de cada módulo.</li>
-<li>Tus respuestas se guardan en este navegador; “Reiniciar test” las borra.</li>
+<li>Elige un módulo y responde una pregunta a la vez; puedes volver atrás o saltar con el mapa de preguntas.</li>
+<li>No verás respuestas ni pistas hasta presionar “Entregar certamen”.</li>
+<li>Al entregar obtienes puntaje, porcentaje de logro, nota (escala 1,0–7,0, exigencia 60 %), tabla de correctas e incorrectas, fundamentación de cada respuesta y contenidos a reforzar.</li>
+<li>Tus respuestas se guardan en este navegador; “Reiniciar” comienza un nuevo intento.</li>
 </ol>
 </section>
 <footer>Elaborado a partir del material de las Unidades 1, 2 y 3 de Dietoterapia Infantojuvenil II (UCM 2026).</footer>
@@ -62,8 +62,9 @@
 document.querySelectorAll(".prog").forEach(function (s) {
   var k = s.getAttribute("data-k"), tot = s.getAttribute("data-n").split("+").reduce(function (a, b) { return a + Number(b); }, 0);
   var n = 0;
-  try { var st = JSON.parse(localStorage.getItem("dieto-ij2-" + k) || "{}"); n = Object.keys(st).length; } catch (e) {}
-  s.textContent = n ? "Avance guardado: " + n + " de " + tot + " ítems" : "Sin iniciar";
+  var sub = false;
+  try { var st = JSON.parse(localStorage.getItem("dieto-ij2-v2-" + k) || "{}"); n = Object.keys(st.ans || {}).length; sub = !!st.sub; } catch (e) {}
+  s.textContent = sub ? "Certamen entregado: revisa tu corrección" : n ? "En curso: " + n + " de " + tot + " ítems respondidos" : "Sin iniciar";
 });
 </script>
 </body>
