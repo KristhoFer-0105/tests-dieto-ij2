@@ -1,19 +1,20 @@
-/* Motor de los tests en modo certamen.
+/* Motor de los tests (modo práctica).
+   Todas las preguntas visibles en la página; corrección inmediata con retroalimentación,
+   análisis de distractores y opción de reintentar cada pregunta.
    Formatos: mc (alternativas), tf (verdadero/falso), match (asociar), order (ordenar), num (numérica), cloze (completar).
-   Ítems compuestos: casos clínicos e imágenes (parts). Una pregunta a la vez; la corrección se entrega al final. */
+   Ítems compuestos: casos clínicos e imágenes (parts). */
 (function () {
   "use strict";
   var Q = window.QUIZ;
   var L = ["A", "B", "C", "D", "E"];
   var LV = { "Básica": "lv1", "Intermedia": "lv2", "Avanzada": "lv3", "Aplicación clínica": "lv3" };
   var FMT = { mc: "Selección múltiple", tf: "Verdadero o falso", match: "Asociación", order: "Ordenar", num: "Respuesta numérica", cloze: "Completar" };
-  var KEY = "dieto-ij2-v2-" + Q.key;
-  var st = { ans: {}, sub: false, cur: 0 };
-  try { var raw = JSON.parse(localStorage.getItem(KEY) || "null"); if (raw && raw.ans) st = raw; } catch (e) {}
+  var KEY = "dieto-ij2-v3-" + Q.key;
+  var st = { ans: {}, chk: {} };
+  try { var raw = JSON.parse(localStorage.getItem(KEY) || "null"); if (raw && raw.ans && raw.chk) st = raw; } catch (e) {}
   function save() { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} }
 
   function el(tag, cls, html) { var n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; }
-  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
   function hash(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
   function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
   function perm(n, seed) { var r = rng(seed), p = []; for (var i = 0; i < n; i++) p.push(i); for (var k = n - 1; k > 0; k--) { var j = Math.floor(r() * (k + 1)); var t = p[k]; p[k] = p[j]; p[j] = t; } return p; }
@@ -38,8 +39,8 @@
       var pc = perm(ch.length, seed); c.choices = pc.map(function (i) { return ch[i]; });
       c.max = p.rows.length;
     } else if (c.type === "order") {
-      var po = perm(p.steps.length, seed), same = po.every(function (v, i) { return v === i; });
-      if (same) po.reverse();
+      var po = perm(p.steps.length, seed);
+      if (po.every(function (v, i) { return v === i; })) po.reverse();
       c.init = po; c.max = p.steps.length;
     } else if (c.type === "num") { c.max = 1; }
     else if (c.type === "cloze") {
@@ -55,14 +56,13 @@
     if (it.parts) {
       var ids = [];
       it.parts.forEach(function (p, k) { var id = n + String.fromCharCode(97 + k); units.push({ id: id, num: n, sub: String.fromCharCode(97 + k), par: it, p: prep(p, id) }); ids.push(id); });
-      blocks.push({ num: n, it: it, ids: ids });
+      blocks.push({ num: n, it: it, ids: ids, isCase: true });
     } else {
       units.push({ id: String(n), num: n, sub: "", par: null, p: prep(it, String(n)) });
-      blocks.push({ num: n, it: it, ids: [String(n)] });
+      blocks.push({ num: n, it: it, ids: [String(n)], isCase: false });
     }
   });
-  var byId = {}; units.forEach(function (u, i) { u.idx = i; byId[u.id] = u; });
-  if (st.cur >= units.length) st.cur = 0;
+  var byId = {}; units.forEach(function (u) { byId[u.id] = u; });
 
   /* ---------- Corrección ---------- */
   function answered(u) {
@@ -71,14 +71,7 @@
     if (t === "mc") return typeof a === "number";
     if (t === "num") return String(a).trim() !== "";
     if (t === "order") return !!a.touched;
-    if (t === "tf" || t === "match" || t === "cloze") return a.some(function (v) { return v !== null && v !== "" && v !== undefined; });
-    return false;
-  }
-  function complete(u) {
-    var a = st.ans[u.id], t = u.p.type;
-    if (!answered(u)) return false;
-    if (t === "tf" || t === "match" || t === "cloze") return a.every(function (v) { return v !== null && v !== "" && v !== undefined; }) && a.length === u.p.max;
-    return true;
+    return a.some(function (v) { return v !== null && v !== "" && v !== undefined; });
   }
   function score(u) {
     var p = u.p, a = st.ans[u.id], t = p.type;
@@ -91,16 +84,18 @@
     if (t === "order") return a.ord.reduce(function (s, v, i) { return s + (v === i ? 1 : 0); }, 0);
     return 0;
   }
-  function totals() {
-    var pts = 0, max = 0;
-    units.forEach(function (u) { pts += score(u); max += u.p.max; });
-    var r = max ? pts / max : 0;
-    var nota = r < 0.6 ? 1 + 3 * r / 0.6 : 4 + 3 * (r - 0.6) / 0.4;
-    return { pts: pts, max: max, pct: Math.round(r * 1000) / 10, nota: Math.round(nota * 10) / 10 };
+  function status(u) { if (!st.chk[u.id]) return ""; var s = score(u); return s === u.p.max ? "ok" : s > 0 ? "part" : "bad"; }
+  function blockStatus(b) {
+    var ss = b.ids.map(function (id) { return status(byId[id]); });
+    if (ss.every(function (s) { return s === ""; })) return "";
+    if (ss.some(function (s) { return s === ""; })) return "prog";
+    if (ss.every(function (s) { return s === "ok"; })) return "ok";
+    if (ss.some(function (s) { return s === "bad"; })) return "bad";
+    return "part";
   }
 
-  /* ---------- Renderizadores ---------- */
-  function setAns(u, v) { st.ans[u.id] = v; save(); renderBar(); renderMap(); }
+  /* ---------- Renderizadores por formato ---------- */
+  function setAns(u, v) { st.ans[u.id] = v; save(); }
 
   function rMC(u, box, review) {
     var p = u.p, a = st.ans[u.id];
@@ -109,11 +104,10 @@
       var b = el("button", "opt", "<b>" + L[k] + ".</b><span>" + o + "</span>"); b.type = "button";
       if (review) {
         b.disabled = true;
-        if (k === p.a) b.classList.add(a === k ? "ok" : "sol");
+        if (k === p.a) b.classList.add("ok");
         else if (a === k) b.classList.add("bad");
       } else {
-        if (a === k) b.classList.add("sel");
-        b.addEventListener("click", function () { setAns(u, k); opts.querySelectorAll(".opt").forEach(function (x, j) { x.classList.toggle("sel", j === k); }); });
+        b.addEventListener("click", function () { st.ans[u.id] = k; st.chk[u.id] = 1; save(); refreshUnit(u); });
       }
       opts.appendChild(b);
     });
@@ -143,7 +137,7 @@
         bs.appendChild(b);
       });
       row.appendChild(bs);
-      if (review) row.appendChild(el("p", "just " + (a[i] === s.v ? "ok" : "bad"), "<b>" + (s.v ? "Verdadero" : "Falso") + ".</b> " + s.f));
+      if (review) row.appendChild(el("p", "just " + (a[i] === s.v ? "ok" : "bad"), (a[i] === s.v ? "✔ " : a[i] == null ? "— Sin responder. " : "✘ ") + "<b>Es " + (s.v ? "verdadera" : "falsa") + ":</b> " + s.f));
       list.appendChild(row);
     });
     box.appendChild(list);
@@ -207,6 +201,7 @@
       row.appendChild(el("span", "corr", "Correcta: " + fmtN(p.ans) + (p.unit ? " " + p.unit : "") + (p.tol ? " (± " + fmtN(p.tol) + ")" : "")));
     } else {
       inp.addEventListener("input", function () { setAns(u, inp.value); });
+      inp.addEventListener("keydown", function (e) { if (e.key === "Enter") check(u); });
       row.appendChild(el("span", "hint", "Usa coma o punto decimal"));
     }
     box.appendChild(row);
@@ -235,187 +230,220 @@
 
   var R = { mc: rMC, tf: rTF, match: rMatch, order: rOrder, num: rNum, cloze: rCloze };
 
+  /* ---------- Retroalimentación ---------- */
   function fbHTML(u) {
     var p = u.p, sc = score(u), h = "";
-    var res = !answered(u) ? '<span class="bad">sin responder</span>' : sc === p.max ? '<span class="ok">correcta</span>' : sc > 0 ? '<span class="warn">parcial</span>' : '<span class="bad">incorrecta</span>';
+    var res = !answered(u) ? '<span class="bad">sin responder</span>' : sc === p.max ? '<span class="ok">correcta</span>' : sc > 0 ? '<span class="warn">parcialmente correcta</span>' : '<span class="bad">incorrecta</span>';
     if (p.type === "mc") {
       var a = st.ans[u.id];
-      h += '<p class="key">Pauta: pregunta ' + u.id + " → alternativa " + L[p.a] + " · Tu respuesta: " + (typeof a === "number" ? L[a] : "—") + " (" + res + ")</p>";
+      h += '<p class="key">Respuesta correcta: <span class="ok">' + L[p.a] + ". " + p.o[p.a] + "</span><br>Tu respuesta: " + (typeof a === "number" ? L[a] : "—") + " (" + res + ")</p>";
     } else {
-      h += '<p class="key">Pregunta ' + u.id + " · Puntaje: " + fmtN(sc) + " de " + p.max + " (" + res + ")</p>";
+      h += '<p class="key">Puntaje: ' + fmtN(sc) + " de " + p.max + " (" + res + ")</p>";
     }
-    h += "<h4>Retroalimentación</h4><p>" + p.f + "</p>";
+    h += "<h4>Por qué es correcta</h4><p>" + p.f + "</p>";
     if (p.type === "mc") {
-      h += "<h4>Análisis de distractores</h4><ul>" + p.o.map(function (o, k) { return k === p.a ? "" : "<li><b>" + L[k] + ".</b> " + (p.x[k] || "") + "</li>"; }).join("") + "</ul>";
+      h += "<h4>Por qué las otras alternativas no son correctas</h4><ul>" + p.o.map(function (o, k) { return k === p.a ? "" : "<li><b>" + L[k] + ".</b> " + (p.x[k] || "") + "</li>"; }).join("") + "</ul>";
+    } else if (p.type === "tf") {
+      var fs = p.s.map(function (s, i) { return s.v ? "" : "<li><b>Afirmación " + (i + 1) + ":</b> " + s.f + "</li>"; }).join("");
+      if (fs) h += "<h4>Por qué las afirmaciones falsas no son correctas</h4><ul>" + fs + "</ul>";
+    } else if (p.type === "match") {
+      if (p.why) h += "<h4>Fundamento de cada asociación</h4><ul>" + p.rows.map(function (r, i) { return "<li><b>" + r.l + " → " + r.r + ".</b> " + (p.why[i] || "") + "</li>"; }).join("") + "</ul>";
+      if (p.extra && p.extra.length) h += "<p><b>Distractor:</b> " + p.extra.map(function (e) { return "«" + e + "»"; }).join(", ") + " no corresponde a ninguno de los elementos.</p>";
+    } else if (p.type === "cloze") {
+      h += "<h4>Respuestas de cada espacio</h4><ul>" + p.blanks.map(function (b, i) { return "<li>Espacio " + (i + 1) + ": <b>" + b.a + "</b> · incorrectas: " + b.o.filter(function (x) { return x !== b.a; }).join(", ") + "</li>"; }).join("") + "</ul>";
     }
-    if (p.type === "match" && p.why) h += "<h4>Fundamento de cada asociación</h4><ul>" + p.rows.map(function (r, i) { return p.why[i] ? "<li><b>" + r.l + " → " + r.r + ".</b> " + p.why[i] + "</li>" : ""; }).join("") + "</ul>";
     h += '<p class="cont"><b>Contenido evaluado:</b> ' + p.t + "</p>";
     return h;
   }
 
-  function caseBox(u, open) {
-    var it = u.par;
-    var d = el("details", "casewrap"); d.open = open;
-    d.appendChild(el("summary", "", '<span class="tag">' + it.kind + "</span> " + it.title));
-    var inner = el("div", "casebox");
-    if (it.fig && window.drawGut) inner.appendChild(el("figure", "fig", window.drawGut(it.fig, "Imagen " + (it.figNum || u.num)) + (it.cap ? "<figcaption>" + it.cap + "</figcaption>" : "")));
-    if (it.html) inner.appendChild(el("div", "", it.html));
-    d.appendChild(inner);
-    return d;
+  /* ---------- Tarjetas ---------- */
+  function check(u) {
+    if (!answered(u)) {
+      var hint = document.querySelector("#u" + u.id + " .needans");
+      if (hint) hint.hidden = false;
+      return;
+    }
+    st.chk[u.id] = 1; save(); refreshUnit(u);
   }
 
-  function unitCard(u, review) {
-    var p = u.p;
-    var card = el("article", "q");
-    card.id = "u" + u.id;
-    var h = el("div", "qh");
-    h.appendChild(el("span", "num", u.id));
-    h.appendChild(el("span", "tag", FMT[p.type]));
-    var d = p.d || (u.par && u.par.d);
-    if (d) h.appendChild(el("span", "tag " + (LV[d] || ""), d));
-    if (review) {
-      var sc = score(u), cl = sc === p.max ? "ok" : sc > 0 ? "part" : "bad";
-      card.classList.add(cl === "part" ? "pt" : cl);
-      h.appendChild(el("span", "state " + (cl === "part" ? "warn" : cl), fmtN(sc) + "/" + p.max + " pts"));
-    }
-    card.appendChild(h);
-    if (u.par) card.appendChild(caseBox(u, !review || u.sub === "a"));
+  function partEl(u) {
+    var p = u.p, review = !!st.chk[u.id];
     var box = el("div", "part");
-    box.appendChild(el("p", "stem", (u.sub ? '<span class="lab">' + u.sub + ")</span>" : "") + p.q));
+    box.id = "u" + u.id;
+    var lab = u.sub ? '<span class="lab">' + u.id + ")</span>" : "";
+    var tags = u.sub ? ' <span class="tag">' + FMT[p.type] + "</span>" : "";
+    box.appendChild(el("p", u.sub ? "pq" : "stem", lab + p.q + tags));
     R[p.type](u, box, review);
-    card.appendChild(box);
-    if (review) card.appendChild(el("div", "fb", fbHTML(u)));
+    var acts = el("div", "acts");
+    if (review) {
+      var s = score(u), cls = s === p.max ? "ok" : s > 0 ? "warn" : "bad";
+      box.appendChild(el("div", "fb fb-" + cls, fbHTML(u)));
+      var rt = el("button", "btn", "↺ Reintentar pregunta"); rt.type = "button";
+      rt.addEventListener("click", function () { delete st.ans[u.id]; delete st.chk[u.id]; save(); refreshUnit(u); });
+      acts.appendChild(rt);
+    } else if (p.type !== "mc") {
+      var ck = el("button", "btn primary", "Comprobar respuesta"); ck.type = "button";
+      ck.addEventListener("click", function () { check(u); });
+      acts.appendChild(ck);
+      var nh = el("span", "needans", "Responde antes de comprobar."); nh.hidden = true; acts.appendChild(nh);
+    }
+    box.appendChild(acts);
+    return box;
+  }
+
+  function headEl(b) {
+    var it = b.it, h = el("div", "qh");
+    h.appendChild(el("span", "num", String(b.num)));
+    if (b.isCase) h.appendChild(el("span", "tag", it.kind));
+    else h.appendChild(el("span", "tag", FMT[byId[b.ids[0]].p.type]));
+    if (it.d) h.appendChild(el("span", "tag " + (LV[it.d] || ""), it.d));
+    var bs = blockStatus(b);
+    var lbl = { ok: "Correcta", bad: "Con errores", part: "Parcial", prog: "En curso" }[bs];
+    if (b.isCase && bs === "ok") lbl = "Todo correcto";
+    if (lbl) h.appendChild(el("span", "state " + (bs === "prog" ? "" : bs === "part" ? "warn" : bs), lbl));
+    return h;
+  }
+
+  function blockEl(b) {
+    var it = b.it;
+    var card = el("article", "q");
+    card.id = "q" + b.num;
+    var bs = blockStatus(b);
+    if (bs === "ok" || bs === "bad") card.classList.add(bs);
+    if (bs === "part") card.classList.add("pt");
+    card.appendChild(headEl(b));
+    if (b.isCase) {
+      card.appendChild(el("h3", "ctitle", it.title));
+      var inner = el("div", "casebox");
+      if (it.fig && window.drawGut) inner.appendChild(el("figure", "fig", window.drawGut(it.fig, "Imagen " + (it.figNum || b.num)) + (it.cap ? "<figcaption>" + it.cap + "</figcaption>" : "")));
+      if (it.html) inner.appendChild(el("div", "", it.html));
+      card.appendChild(inner);
+    }
+    b.ids.forEach(function (id) { card.appendChild(partEl(byId[id])); });
     return card;
+  }
+
+  function refreshUnit(u) {
+    var old = document.getElementById("u" + u.id);
+    if (old) old.replaceWith(partEl(u));
+    var b = blocks[u.num - 1], card = document.getElementById("q" + b.num);
+    if (card) {
+      card.classList.remove("ok", "bad", "pt");
+      var bs = blockStatus(b);
+      if (bs === "ok" || bs === "bad") card.classList.add(bs);
+      if (bs === "part") card.classList.add("pt");
+      card.querySelector(".qh").replaceWith(headEl(b));
+    }
+    renderBar(); renderMap(); renderSummary();
   }
 
   /* ---------- Vistas ---------- */
   var main = document.getElementById("main"), gridEl = document.getElementById("grid");
+  var filter = "all";
 
   document.title = Q.docTitle;
-  document.getElementById("hero").innerHTML = '<div class="wrap"><div class="kicker">' + Q.module + " · Dietoterapia Infantojuvenil II · NUT-421</div><h1>" + Q.title + "</h1><p>" + Q.subtitle + '</p><div class="chips">' + Q.chips.map(function (c) { return "<span>" + c + "</span>"; }).join("") + '<span>Corrección al entregar</span></div></div>';
+  document.getElementById("hero").innerHTML = '<div class="wrap"><div class="kicker">' + Q.module + " · Dietoterapia Infantojuvenil II · NUT-421</div><h1>" + Q.title + "</h1><p>" + Q.subtitle + '</p><div class="chips">' + Q.chips.map(function (c) { return "<span>" + c + "</span>"; }).join("") + '<span>Corrección inmediata</span></div></div>';
+
+  function totals() {
+    var pts = 0, max = 0, done = 0, dmax = 0;
+    units.forEach(function (u) { max += u.p.max; if (st.chk[u.id]) { done++; dmax += u.p.max; pts += score(u); } });
+    var r = max ? pts / max : 0;
+    var nota = r < 0.6 ? 1 + 3 * r / 0.6 : 4 + 3 * (r - 0.6) / 0.4;
+    return { pts: pts, max: max, done: done, dmax: dmax, pct: dmax ? Math.round(pts * 1000 / dmax) / 10 : null, nota: Math.round(nota * 10) / 10 };
+  }
 
   function renderBar() {
-    var nA = units.filter(answered).length;
-    var stats = document.getElementById("stats");
-    if (st.sub) {
-      var T = totals();
-      stats.innerHTML = "<span><b>" + fmtN(T.pts) + "/" + T.max + "</b> puntos</span><span><b>" + fmtN(T.pct) + " %</b> logro</span><span><b>" + fmtN(T.nota.toFixed(1)) + "</b> nota (60 %)</span>";
-    } else {
-      stats.innerHTML = "<span><b>" + nA + "/" + units.length + "</b> respondidas</span><span>Pregunta <b>" + units[st.cur].id + "</b></span>";
-    }
-    document.getElementById("track").style.width = (st.sub ? 100 : nA * 100 / units.length) + "%";
+    var T = totals();
+    document.getElementById("stats").innerHTML =
+      "<span><b>" + T.done + "/" + units.length + "</b> respondidas</span>" +
+      "<span><b>" + fmtN(T.pts) + "/" + T.max + "</b> puntos</span>" +
+      "<span><b>" + (T.pct == null ? "—" : fmtN(T.pct) + " %") + "</b> logro</span>" +
+      "<span><b>" + (T.done ? fmtN(T.nota.toFixed(1)) : "—") + "</b> nota (60 %)</span>";
+    document.getElementById("track").style.width = (T.done * 100 / units.length) + "%";
+  }
+
+  function visible(b) {
+    var bs = blockStatus(b);
+    if (filter === "pend") return bs === "" || bs === "prog";
+    if (filter === "bad") return b.ids.some(function (id) { var s = status(byId[id]); return s === "bad" || s === "part"; });
+    if (filter === "case") return b.isCase;
+    return true;
   }
 
   function renderMap() {
     gridEl.innerHTML = "";
-    units.forEach(function (u, i) {
-      var cls = "n";
-      if (st.sub) { var s = score(u); cls += s === u.p.max ? " ok" : s > 0 ? " part" : " bad"; }
-      else { if (answered(u)) cls += complete(u) ? " done" : " part"; if (i === st.cur) cls += " cur"; }
-      var b = el("button", cls, u.id); b.type = "button";
-      b.addEventListener("click", function () {
-        if (st.sub) { var t = document.getElementById("u" + u.id); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); }
-        else { st.cur = i; save(); renderExam(); }
+    blocks.forEach(function (b) {
+      var bs = blockStatus(b);
+      var n = el("button", "n" + (bs ? " " + ({ ok: "ok", bad: "bad", part: "part", prog: "part" }[bs]) : ""), String(b.num)); n.type = "button";
+      n.title = b.isCase ? "Pregunta " + b.num + " · " + b.it.kind : "Pregunta " + b.num;
+      n.addEventListener("click", function () {
+        if (!visible(b)) setFilter("all");
+        var t = document.getElementById("q" + b.num); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" });
       });
-      gridEl.appendChild(b);
+      gridEl.appendChild(n);
     });
   }
 
-  function renderExam() {
-    main.innerHTML = "";
-    var u = units[st.cur];
-    var sec = blocks[u.num - 1].it.sec;
-    for (var j = u.num - 1; !sec && j >= 0; j--) sec = blocks[j].it.sec;
-    if (sec) main.appendChild(el("p", "secnote", sec));
-    main.appendChild(unitCard(u, false));
-    var nav = el("div", "navbar");
-    var prev = el("button", "btn big", "← Anterior"); prev.type = "button"; prev.disabled = st.cur === 0;
-    prev.addEventListener("click", function () { st.cur--; save(); renderExam(); scrollTop(); });
-    nav.appendChild(prev);
-    nav.appendChild(el("span", "pos", (st.cur + 1) + " de " + units.length));
-    if (st.cur < units.length - 1) {
-      var next = el("button", "btn big primary", "Siguiente →"); next.type = "button";
-      next.addEventListener("click", function () { st.cur++; save(); renderExam(); scrollTop(); });
-      nav.appendChild(next);
-    } else {
-      var fin = el("button", "btn big primary", "Revisar y entregar"); fin.type = "button";
-      fin.addEventListener("click", askSubmit); nav.appendChild(fin);
-    }
-    main.appendChild(nav);
-    renderBar(); renderMap();
-  }
-
-  function scrollTop() { var b = document.querySelector(".bar"); window.scrollTo({ top: b ? b.offsetTop : 0, behavior: "smooth" }); }
-
-  function askSubmit() {
-    var pend = units.filter(function (u) { return !complete(u); });
-    var box = el("div", "confirm");
-    box.innerHTML = "<h3>¿Entregar el certamen?</h3><p>" + (pend.length ? "Tienes <b>" + pend.length + "</b> pregunta(s) sin responder o incompletas: " + pend.map(function (u) { return u.id; }).join(", ") + ". Se corregirán como están." : "Respondiste todas las preguntas.") + " Después de entregar verás la corrección completa.</p>";
-    var row = el("div", "acts");
-    var ok = el("button", "btn big primary", "Entregar y ver corrección"); ok.type = "button";
-    var no = el("button", "btn big", "Seguir respondiendo"); no.type = "button";
-    ok.addEventListener("click", function () { st.sub = true; save(); renderResults(); scrollTop(); });
-    no.addEventListener("click", function () { box.remove(); });
-    row.appendChild(ok); row.appendChild(no); box.appendChild(row);
-    var old = main.querySelector(".confirm"); if (old) old.remove();
-    main.appendChild(box); box.scrollIntoView({ behavior: "smooth", block: "center" });
-  }
-
-  var onlyBad = false;
-  function renderResults() {
-    main.innerHTML = "";
-    var T = totals();
-    var sum = el("section", "result");
-    sum.innerHTML = '<h2>Resultado del certamen</h2><div class="kpis"><div><b>' + fmtN(T.pts) + " / " + T.max + "</b><span>puntaje</span></div><div><b>" + fmtN(T.pct) + ' %</b><span>logro</span></div><div><b class="nota ' + (T.nota >= 4 ? "ok" : "bad") + '">' + fmtN(T.nota.toFixed(1)) + "</b><span>nota (exigencia 60 %)</span></div></div>";
-    main.appendChild(sum);
-
-    // Contenidos a reforzar
+  var sumEl = el("details", "result summary");
+  function renderSummary() {
+    var T = totals(), open = sumEl.open;
+    if (!T.done) { sumEl.innerHTML = "<summary>Resumen de resultados</summary><p>Aún no has respondido preguntas.</p>"; sumEl.open = open; return; }
     var areas = {};
     units.forEach(function (u) {
+      if (!st.chk[u.id]) return;
       var ar = u.p.t.split(":")[0].trim(); if (!areas[ar]) areas[ar] = { pts: 0, max: 0, ids: [] };
       var s = score(u); areas[ar].pts += s; areas[ar].max += u.p.max; if (s < u.p.max) areas[ar].ids.push(u.id);
     });
     var weak = Object.keys(areas).filter(function (k) { return areas[k].ids.length; }).sort(function (a, b) { return areas[a].pts / areas[a].max - areas[b].pts / areas[b].max; });
-    var ref = el("section", "result");
-    ref.innerHTML = "<h2>Contenidos que debes reforzar</h2>" + (weak.length ? "<ul class='weak'>" + weak.map(function (k) { var A = areas[k]; return "<li><b>" + k + "</b> — " + Math.round(A.pts * 100 / A.max) + " % de logro · preguntas " + A.ids.join(", ") + "</li>"; }).join("") + "</ul>" : "<p>¡Excelente! No hay contenidos con errores.</p>");
-    main.appendChild(ref);
-
-    // Tabla
-    var tb = el("section", "result");
-    tb.innerHTML = "<h2>Tabla de respuestas</h2><div class='tbl'><table><thead><tr><th>N.º</th><th>Formato</th><th>Contenido evaluado</th><th>Puntaje</th><th>Resultado</th></tr></thead><tbody>" +
+    sumEl.innerHTML = "<summary>Resumen de resultados (" + T.done + " de " + units.length + " respondidas)</summary>" +
+      '<div class="kpis"><div><b>' + fmtN(T.pts) + " / " + T.dmax + "</b><span>puntos en lo respondido</span></div><div><b>" + fmtN(T.pct) + ' %</b><span>logro</span></div><div><b class="nota ' + (T.nota >= 4 ? "ok" : "bad") + '">' + fmtN(T.nota.toFixed(1)) + "</b><span>nota sobre el total (" + T.max + " pts, 60 %)</span></div></div>" +
+      "<h3>Contenidos que debes reforzar</h3>" + (weak.length ? "<ul class='weak'>" + weak.map(function (k) { var A = areas[k]; return "<li><b>" + k + "</b> — " + Math.round(A.pts * 100 / A.max) + " % de logro · preguntas " + A.ids.map(function (id) { return '<a href="#u' + id + '">' + id + "</a>"; }).join(", ") + "</li>"; }).join("") + "</ul>" : "<p>Sin errores en lo respondido.</p>") +
+      "<h3>Tabla de respuestas</h3><div class='tbl'><table><thead><tr><th>N.º</th><th>Formato</th><th>Contenido evaluado</th><th>Puntaje</th><th>Resultado</th></tr></thead><tbody>" +
       units.map(function (u) {
-        var s = score(u), r = !answered(u) ? "Sin responder" : s === u.p.max ? "Correcta" : s > 0 ? "Parcial" : "Incorrecta";
-        var c = s === u.p.max ? "ok" : s > 0 ? "warn" : "bad";
+        if (!st.chk[u.id]) return '<tr><td><a href="#u' + u.id + '">' + u.id + "</a></td><td>" + FMT[u.p.type] + "</td><td>" + u.p.t + "</td><td>—</td><td>Pendiente</td></tr>";
+        var s = score(u), r = s === u.p.max ? "Correcta" : s > 0 ? "Parcial" : "Incorrecta", c = s === u.p.max ? "ok" : s > 0 ? "warn" : "bad";
         return '<tr><td><a href="#u' + u.id + '">' + u.id + "</a></td><td>" + FMT[u.p.type] + "</td><td>" + u.p.t + "</td><td>" + fmtN(s) + "/" + u.p.max + '</td><td class="' + c + '">' + r + "</td></tr>";
       }).join("") + "</tbody></table></div>";
-    main.appendChild(tb);
+    sumEl.open = open;
+  }
 
-    var tools = el("div", "acts");
-    var f1 = el("button", "f", onlyBad ? "Ver todas" : "Ver solo errores"); f1.type = "button";
-    f1.addEventListener("click", function () { onlyBad = !onlyBad; renderResults(); });
-    var pr = el("button", "f", "Imprimir"); pr.type = "button"; pr.addEventListener("click", function () { window.print(); });
-    var rs = el("button", "f reset", "Nuevo intento"); rs.type = "button"; rs.addEventListener("click", askReset);
-    tools.appendChild(f1); tools.appendChild(pr); tools.appendChild(rs);
-    main.appendChild(el("h2", "sec", "Corrección fundamentada"));
-    main.appendChild(tools);
-    units.forEach(function (u) { if (onlyBad && score(u) === u.p.max) return; main.appendChild(unitCard(u, true)); });
+  function renderAll() {
+    main.innerHTML = "";
+    var shown = 0, lastSec = null;
+    blocks.forEach(function (b) {
+      var sec = b.it.sec || null;
+      if (!visible(b)) { if (sec) lastSec = sec; return; }
+      if (sec && sec !== lastSec && filter === "all") main.appendChild(el("h2", "sec", sec));
+      if (sec) lastSec = sec;
+      main.appendChild(blockEl(b)); shown++;
+    });
+    if (!shown) main.appendChild(el("p", "empty", "No hay preguntas en este filtro."));
+    renderSummary(); main.appendChild(sumEl);
     renderBar(); renderMap();
   }
 
-  function askReset() {
+  function setFilter(f) {
+    filter = f;
+    document.querySelectorAll(".f[data-f]").forEach(function (b) { b.setAttribute("aria-pressed", b.getAttribute("data-f") === f ? "true" : "false"); });
+    renderAll();
+  }
+  document.querySelectorAll(".f[data-f]").forEach(function (b) { b.addEventListener("click", function () { setFilter(b.getAttribute("data-f")); }); });
+  if (!blocks.some(function (b) { return b.isCase; })) { var cb = document.querySelector('.f[data-f="case"]'); if (cb) cb.hidden = true; }
+
+  document.getElementById("reset").addEventListener("click", function () {
+    var old = document.querySelector(".confirm"); if (old) { old.remove(); return; }
     var box = el("div", "confirm");
-    box.innerHTML = "<h3>¿Comenzar un nuevo intento?</h3><p>Se borrarán tus respuestas y la corrección actual.</p>";
+    box.innerHTML = "<h3>¿Borrar todas tus respuestas de este test?</h3><p>Podrás comenzar de nuevo desde cero.</p>";
     var row = el("div", "acts");
-    var ok = el("button", "btn big primary", "Sí, comenzar de nuevo"); ok.type = "button";
-    var no = el("button", "btn big", "Cancelar"); no.type = "button";
-    ok.addEventListener("click", function () { st = { ans: {}, sub: false, cur: 0 }; save(); renderExam(); scrollTop(); });
+    var ok = el("button", "btn primary", "Sí, borrar todo"); ok.type = "button";
+    var no = el("button", "btn", "Cancelar"); no.type = "button";
+    ok.addEventListener("click", function () { st = { ans: {}, chk: {} }; save(); renderAll(); window.scrollTo({ top: 0, behavior: "smooth" }); });
     no.addEventListener("click", function () { box.remove(); });
     row.appendChild(ok); row.appendChild(no); box.appendChild(row);
-    main.insertBefore(box, main.firstChild); scrollTop();
-  }
+    main.insertBefore(box, main.firstChild);
+    box.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+  document.getElementById("printBtn").addEventListener("click", function () { sumEl.open = true; window.print(); });
 
-  document.getElementById("submitBtn").addEventListener("click", function () { if (st.sub) return; st.cur = units.length - 1; renderExam(); askSubmit(); });
-  document.getElementById("reset").addEventListener("click", askReset);
-
-  if (st.sub) renderResults(); else renderExam();
+  renderAll();
 })();

@@ -181,6 +181,14 @@ footer{color:var(--muted);font-size:13px;padding-block:10px 30px}
 .confirm h3{margin:0 0 6px;font:800 19px var(--display);color:var(--strong)}
 .confirm p{margin:0}
 main>*{min-width:0}
+.ctitle{margin:0 0 8px;font:800 19px var(--display);color:var(--strong)}
+.pq .tag{margin-left:6px;vertical-align:1px}
+.needans{font-size:13px;font-weight:700;color:var(--bad);align-self:center}
+.fb.fb-ok{border-left-color:var(--ok)}.fb.fb-bad{border-left-color:var(--bad)}.fb.fb-warn{border-left-color:var(--warn)}
+.fb .key .warn{color:var(--warn)}
+.summary>summary{cursor:pointer;font:800 21px var(--display);color:var(--strong)}
+.summary h3{margin:16px 0 8px;font:800 17px var(--display);color:var(--strong)}
+.summary .kpis{margin-top:12px}
 .result{min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
 .result h2{margin:0 0 10px;font:800 21px var(--display);color:var(--strong)}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
